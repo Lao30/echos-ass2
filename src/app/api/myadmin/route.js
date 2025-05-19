@@ -19,7 +19,7 @@ export async function POST(request) {
     const body = await request.json();
     const { fullName, email, phone, password } = body;
 
-    // Validasi input
+    // Validation input
     const requiredFields = ['fullName', 'email', 'phone', 'password'];
     const missingFields = requiredFields.filter(field => !body[field]);
     
@@ -38,7 +38,7 @@ export async function POST(request) {
     // Generate UUID
     const userId = randomUUID(); // Generate UUID v4
 
-    // Cek email sudah terdaftar
+   
     const existingUser = await query(
       'SELECT email FROM users WHERE email = $1',
       [email]
@@ -60,7 +60,7 @@ export async function POST(request) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert ke database
+    // Insert to database
     const result = await query(
       `INSERT INTO users 
         (user_id, full_name, email, password, phone_number, role) 
