@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+
 
 export default function OrganizerAnalytical() {
   const [summary, setSummary] = useState([]);
@@ -60,58 +62,136 @@ export default function OrganizerAnalytical() {
   if (loading) return <div>Loading analytics...</div>;
   if (error) return <div className="text-red-600">Error: {error}</div>;
 
+   const processPurchaseData = (purchases) => {
+    const grouped = purchases.reduce((acc, purchase) => {
+      const date = new Date(purchase.purchasedAt).toLocaleDateString();
+      acc[date] = (acc[date] || 0) + purchase.amount;
+      return acc;
+    }, {});
+    return Object.entries(grouped).map(([date, amount]) => ({ date, amount }));
+  };
+
   return (
-    <div className="p-6 text-black">
-      <h2 className="text-2xl font-bold mb-4 text-black">Sales Analytics</h2>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        <h2 className="text-3xl font-bold text-gray-800 mb-8">Event Analytics Dashboard</h2>
 
-      <table className="w-full border border-black mb-8 text-black">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2 border border-black text-black">Event</th>
-            <th className="p-2 border border-black text-black">Tickets Sold</th>
-            <th className="p-2 border border-black text-black">Total Revenue (Rp)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {summary.map(s => (
-            <tr key={s.eventId}>
-              <td className="p-2 border border-black text-black">{s.eventName}</td>
-              <td className="p-2 border border-black text-black">{s.count}</td>
-              <td className="p-2 border border-black text-black">{s.revenue.toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        {loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading analytics...</p>
+          </div>
+        )}
 
-      {summary.map(s => (
-        <div key={s.eventId} className="mb-6 text-black">
-          <h3 className="text-xl font-semibold mb-2 text-black">
-            Purchases for “{s.eventName}”
-          </h3>
-          <table className="w-full border border-black text-black">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 border border-black text-black">Email</th>
-                <th className="p-2 border border-black text-black">Amount Paid (Rp)</th>
-                <th className="p-2 border border-black text-black">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(details[s.eventId] || []).map((p, idx) => (
-                <tr key={idx}>
-                  <td className="p-2 border border-black text-black">{p.userEmail}</td>
-                  <td className="p-2 border border-black text-black">{p.amount.toLocaleString()}</td>
-                  <td className="p-2 border border-black text-black">
-                    {p.purchasedAt
-                      ? new Date(p.purchasedAt).toLocaleString()
-                      : "No date"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+        {error && (
+          <div className="bg-red-50 p-4 rounded-lg mb-8">
+            <p className="text-red-600 font-medium">⚠️ Error: {error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            {/* Summary Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+              <h3 className="text-xl font-semibold text-gray-700 mb-4">Sales Overview</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={summary}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="eventName" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" name="Tickets Sold" fill="#4F46E5" />
+                    <Bar dataKey="revenue" name="Revenue (Rp)" fill="#10B981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="mt-8 overflow-x-auto rounded-lg border border-gray-200">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets Sold</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {summary.map(s => (
+                      <tr key={s.eventId} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{s.eventName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{s.count}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                          Rp{s.revenue.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Detailed Purchases */}
+            {summary.map(s => (
+              <div key={s.eventId} className="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 className="text-xl font-semibold text-gray-700 mb-4">Purchase Trends for “{s.eventName}”</h3>
+                
+                <div className="h-64 mb-6">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={processPurchaseData(details[s.eventId] || [])}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="#3B82F6"
+                        strokeWidth={2}
+                        name="Daily Revenue"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {(details[s.eventId] || []).map((p, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.userEmail}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                            Rp{p.amount.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                            {p.purchasedAt ? new Date(p.purchasedAt).toLocaleString() : "N/A"}
+                          </td>
+                        </tr>
+                      ))}
+                      {(!details[s.eventId] || details[s.eventId].length === 0) && (
+                        <tr>
+                          <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
+                            No purchases found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
     </div>
   );
 }
