@@ -140,6 +140,14 @@ const handleYes = async () => {
   }
 
   return (
+    <>
+    <div className="flex items-center justify-center order-1 lg:order-none">
+    <img 
+      src='/assets/seat1.png' 
+      alt="Event logo"
+      className="h-[500px] w-[1000px] justify-center mb-20"
+    />
+  </div>
     <div className="flex min-h-screen bg-gray-50 p-8 gap-8 text-black">
       {/* Configuration Panel */}
       <div className="flex-1 bg-white p-6 rounded-xl shadow-lg">
@@ -155,6 +163,7 @@ const handleYes = async () => {
             </button>
           </div>
         </div>
+        
 
         {/* Sections List */}
         <div className="space-y-6">
@@ -190,9 +199,8 @@ const handleYes = async () => {
                     className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="vip">VIP</option>
-                    <option value="premium">Premium</option>
                     <option value="regular">Regular</option>
-                    <option value="standing">Standing</option>
+                    <option value="economy">Economy</option>
                   </select>
                 </div>
 
@@ -208,14 +216,14 @@ const handleYes = async () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Price ($)</label>
+                  <label className="block text-sm font-medium mb-2">Price (Rp)</label>
                   <input
                     type="number"
                     value={section.price}
                     onChange={(e) => updateSection(section.id || section.tempId, 'price', e.target.value)}
                     className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     min="0"
-                    step="0.01"
+                    step="0"
                   />
                 </div>
               </div>
@@ -236,7 +244,7 @@ const handleYes = async () => {
                   <h3 className="font-semibold">{section.name || "New Section"}</h3>
                   <span className="text-sm text-gray-500 capitalize">{section.type}</span>
                 </div>
-                <span className="text-lg font-bold">${section.price}</span>
+                <span className="text-lg font-bold">Rp{section.price}</span>
               </div>
               <div className="text-sm text-gray-600">
                 {section.capacity} seats available
@@ -288,5 +296,6 @@ const handleYes = async () => {
         </div>
       </div>
     </div>
+    </>
   );
 }
