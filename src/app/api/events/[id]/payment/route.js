@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/app/lib/db';
 import midtransClient from 'midtrans-client';
 
 export async function POST(request, { params }) {

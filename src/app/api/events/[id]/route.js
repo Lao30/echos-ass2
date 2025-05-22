@@ -57,27 +57,41 @@ export async function DELETE(request, { params }) {
     );
   }
 
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    // Hapus data terkait di tabel orders dan waitlists
+    await client.query('DELETE FROM orders WHERE event_id = $1', [id]);
+    await client.query('DELETE FROM waitlists WHERE event_id = $1', [id]);
+
+    // Hapus event utama
+    const result = await client.query(
       'DELETE FROM events WHERE id = $1 RETURNING *',
       [id]
     );
     if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
       return NextResponse.json(
         { success: false, message: 'Event not found' },
         { status: 404 }
       );
     }
+
+    await client.query('COMMIT');
     return NextResponse.json(
       { success: true, message: 'Event deleted successfully' },
       { status: 200 }
     );
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Delete error:', err);
     return NextResponse.json(
       { success: false, message: 'Server error: ' + err.message },
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
 }
 
