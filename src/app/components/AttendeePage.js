@@ -39,7 +39,10 @@ export default function AttendeePage({ onSwitchToLogin, onTicketPurchase }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center space-x-8">
-              <div className="text-xl font-bold text-black">LOGO</div>
+              <div className='flex items-center'>
+      <img src='/assets/logo.png' className='h-[50px] w-[50px]'></img>
+      <h1 className='shadow-2xl text-black font-extrabold text-[18px]'>EchoS</h1>
+      </div>
               <div className="flex items-center space-x-6">
                 <button
                   onClick={() => setActivePage("home")}
@@ -68,7 +71,7 @@ export default function AttendeePage({ onSwitchToLogin, onTicketPurchase }) {
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="w-10 h-10 rounded-full bg-black flex items-center justify-center hover:bg-[#BF9264] transition-colors text-white">
+                className="w-10 h-10 rounded-full bg-black flex items-center justify-center ml-[-30px] hover:bg-[#BF9264] transition-colors">
                 <span className="text-lg font-medium">
                   {user?.name?.charAt(0).toUpperCase() || "U"}
                 </span>

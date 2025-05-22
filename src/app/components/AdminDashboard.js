@@ -279,17 +279,6 @@ case 'AnalyticalReport':
       </div>
     </div>
   );
-
-
-case 'Settings':
-        return null; // Empty content for Settings
-
-      default:
-        return (
-          <div className="text-center py-8 text-gray-500">
-            Select a section from the sidebar to get started
-          </div>
-        );
     }
   };
 

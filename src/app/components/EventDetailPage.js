@@ -60,4 +60,3 @@ export default function EventDetailPage({ event, onBack, onCheckout }) {
     </div>
   );
 }
-

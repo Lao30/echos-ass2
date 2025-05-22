@@ -47,8 +47,8 @@ export default function MyTickets({ email }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 space-y-6">
-      <h2 className="text-2xl font-bold">Your Tickets</h2>
+    <div className="max-w-4xl mx-auto py-12 space-y-6 text-black">
+      <h2 className="text-2xl font-bold">My Tickets</h2>
       {tickets.map((t) => (
         <div
           key={t.id}

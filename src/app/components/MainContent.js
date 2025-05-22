@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import '../../app/globals.css';
 import TicketSeatSetup from './TicketSeatSetup';
 import Promotions from './Promotions';
+import OrganizerAnalytical from "./OrganizerAnalytical";
+import WaitlistTab from './WaitlistTab';
 
 
   
@@ -21,6 +23,7 @@ export default function MainContent({ selectedPage, setSelectedPage, onSwitchToL
   const [editingEvent, setEditingEvent] = useState(null);
   const [editBannerUrl, setEditBannerUrl] = useState('');
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const eventIdForWaitlist = 1;
 
   // Pull stored user info
   const userEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
@@ -105,35 +108,43 @@ export default function MainContent({ selectedPage, setSelectedPage, onSwitchToL
   };
 
   const handleUpdateEvent = async () => {
-    try {
-      const response = await fetch(`/api/events/${editingEvent.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_name: editingEvent.event_name,
-          description: editingEvent.description,
-          event_date: editingEvent.event_date,
-          start_time: editingEvent.start_time,
-          end_time: editingEvent.end_time,
-          venue: editingEvent.venue,
-          banner_url: editBannerUrl,
-          category: editingEvent.category,
-        }),
-      });
-      if (!response.ok) throw new Error('Update failed');
-      const updatedEvent = await response.json();
-      setCreatedEvents(prev =>
-        prev.map(event =>
-          event.id === updatedEvent.id ? updatedEvent : event
-        )
-      );
-      setEditingEvent(null);
-      alert('Event updated successfully!');
-    } catch (error) {
-      console.error('Update error:', error);
-      alert('Failed to update event');
+  try {
+    const res = await fetch(`/api/events/${editingEvent.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_name:    editingEvent.event_name,
+        description:   editingEvent.description,
+        event_date:    editingEvent.event_date,
+        start_time:    editingEvent.start_time,
+        end_time:      editingEvent.end_time,
+        venue:         editingEvent.venue,
+        banner_url:    editBannerUrl,
+        category:      editingEvent.category,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Update failed');
     }
-  };
+    // ◀️ perbaikan di sini:
+    const { success, event: updated } = await res.json();
+    if (!success) throw new Error('Server reported failure');
+
+    setCreatedEvents(prev =>
+      prev.map(ev =>
+        ev.id === updated.id ? updated : ev
+      )
+    );
+    setEditingEvent(null);
+    setEditBannerUrl('');
+    alert('Event updated successfully!');
+  } catch (error) {
+    console.error('Update error:', error);
+    alert('Failed to update event: ' + error.message);
+  }
+};
+
 
 const [user, setUser] = useState({
     name: 'Guest',
@@ -231,12 +242,14 @@ const [user, setUser] = useState({
     )}
   </div>
 
+  
+
   {/* Created Event Display */}
   {selectedPage === 'Dashboard' && createdEvents.length > 0 && (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8 max-w-7xl mx-auto">
     {createdEvents.map((event) => (
       <div 
-        key={event.event_id} 
+        key={event.id}
         className="bg-white shadow-xl rounded-2xl p-6 border border-gray-200 hover:shadow-2xl transition-all duration-300 w-full max-w-[500px] mx-auto lg:max-w-none lg:w-auto flex flex-col"
       >
         <div className="relative flex-grow">
@@ -384,7 +397,7 @@ const [user, setUser] = useState({
                   className="w-full p-2 border rounded-lg"
                 >
                   <option value="">Select a category</option>
-                  {['Concert', 'Conference', 'Festival', 'Workshop', 'Sports', 'Exhibition', 'Charity'].map((cat) => (
+                  {['Concert', 'Conference', 'Sports', 'Exhibition'].map((cat) => (
   <option key={cat} value={cat}>{cat}</option>
 ))}
 
@@ -503,6 +516,8 @@ const [user, setUser] = useState({
     </div>
   )
 )}
+
+
       {/* Edit Event Modal */}
 {editingEvent && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -644,8 +659,16 @@ const [user, setUser] = useState({
   </div>
 )}
 
+{selectedPage === 'Analytical' && (
+  <OrganizerAnalytical />
+)}
+
+ {selectedPage === "Waitlist" && (
+          <WaitlistTab eventId={eventIdForWaitlist} />
+        )}
+
       {/* Update the fallback content */}
-      {!['Dashboard', 'CreateEvents', 'Tickets', 'VIP Zone', 'Promotion'].includes(selectedPage) && (
+      {!['Dashboard', 'CreateEvents', 'Tickets', 'VIP Zone', 'Promotion', 'Analytical', 'Waitlist'].includes(selectedPage) && (
         <div className="text-black text-center mt-20">
           This is the {selectedPage} page content.
         </div>

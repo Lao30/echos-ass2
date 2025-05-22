@@ -1,57 +1,121 @@
+// components/AttendeeHome.js
 import React, { useState, useEffect } from "react";
 
-export default function AttendeeHome({ events, onTicketPurchase }) {
+export default function AttendeeHome({
+  events,
+  onTicketPurchase,
+  onJoinWaitlist, // callback opsional untuk parent
+}) {
   const [processedEvents, setProcessedEvents] = useState([]);
   const [enteredPromo, setEnteredPromo] = useState({});
   const [appliedPromos, setAppliedPromos] = useState({});
-  
+  const [availability, setAvailability] = useState({});
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
-  // Preprocess events to ensure originalPrice & discountedPrice
+  // 0) Load user info dari localStorage
+  useEffect(() => {
+    setUserName(localStorage.getItem("user_name") || "");
+    setUserEmail(localStorage.getItem("userEmail") || "");
+  }, []);
+
+  // 1) Hitung originalPrice & discountedPrice
   useEffect(() => {
     const list = events.map((event) => {
-      const basePrice = event.originalPrice ?? event.price;
-      let bestDiscount = event.discountedPrice ?? basePrice;
-      if (event.promotionData?.length) {
-        event.promotionData.forEach((promo) => {
-          let calc = basePrice;
-          if (promo.discount_type === "percentage") {
-            calc = basePrice - (basePrice * promo.discount_amount) / 100;
-          } else {
-            calc = basePrice - promo.discount_amount;
-          }
-          if (calc < bestDiscount) bestDiscount = Math.max(0, calc);
-        });
-      }
-      return { ...event, originalPrice: basePrice, discountedPrice: bestDiscount };
+      const base = event.originalPrice ?? event.price ?? 0;
+      let best = event.discountedPrice ?? base;
+      event.promotionData?.forEach((promo) => {
+        const calc =
+          promo.discount_type === "percentage"
+            ? base - (base * promo.discount_amount) / 100
+            : base - promo.discount_amount;
+        best = Math.min(best, Math.max(0, calc));
+      });
+      return { ...event, originalPrice: base, discountedPrice: best };
     });
     setProcessedEvents(list);
   }, [events]);
 
+  // 2) Fetch total capacity & reservedCount per event
+  useEffect(() => {
+    async function loadAvailability() {
+      const map = {};
+      await Promise.all(
+        events.map(async (evt) => {
+          // a) total kapasitas
+          const secRes = await fetch(`/api/ticket?eventId=${evt.id}`);
+          const { sections = [] } = await secRes.json();
+          const capacity = sections.reduce((sum, s) => sum + Number(s.capacity || 0), 0);
+
+          // b) reserved seats count
+          const resRes = await fetch(`/api/seats/reserved?eventId=${evt.id}`);
+          const { reserved = [] } = await resRes.json();
+          const reservedCount = reserved.length;
+
+          map[evt.id] = { capacity, reservedCount };
+        })
+      );
+      setAvailability(map);
+    }
+    if (events.length) loadAvailability();
+  }, [events]);
+
+  // 3) Apply promo
   const handleApplyPromo = (eventId, event) => {
-    const code = enteredPromo[eventId]?.trim().toLowerCase();
-    const promo = event.promotionData?.find(
-      (p) => p.promo_code.toLowerCase() === code
-    );
+    const code = (enteredPromo[eventId] || "").trim().toLowerCase();
+    const promo = event.promotionData?.find((p) => p.promo_code.toLowerCase() === code);
     if (!promo) {
       alert("Invalid promo code");
       return;
     }
-    const basePrice = event.originalPrice;
-    let calc = basePrice;
-    if (promo.discount_type === "percentage") {
-      calc = basePrice - (basePrice * promo.discount_amount) / 100;
-    } else {
-      calc = basePrice - promo.discount_amount;
-    }
-    if (calc < 0) calc = 0;
+    const base = event.originalPrice;
+    const calc =
+      promo.discount_type === "percentage"
+        ? base - (base * promo.discount_amount) / 100
+        : base - promo.discount_amount;
+
     setAppliedPromos((prev) => ({
       ...prev,
-      [eventId]: { discountedPrice: calc, originalPrice: basePrice },
+      [eventId]: {
+        appliedCode:     promo.promo_code,
+        discountedPrice: Math.max(0, calc),
+        originalPrice:   base,
+      },
     }));
+  };
+
+  // 4) Join waitlist: POST ke /api/waitlist
+  const joinWaitlist = async (evt) => {
+    alert("Join waitlist success");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id:    evt.id,
+          event_name:  evt.event_name,   // ← pastikan dikirim
+          user_name:   userName,
+          user_email:  userEmail,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to join waitlist");
+      const data = await res.json();
+      onJoinWaitlist?.({
+        eventId:    evt.id,
+        eventName:  evt.event_name,
+        userName,
+        userEmail,
+        time: data.entry?.created_at,
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Gagal menambahkan ke waitlist");
+    }
   };
 
   return (
     <>
+      {/* Header */}
       <div className="mb-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Browse Upcoming Events
@@ -59,10 +123,11 @@ export default function AttendeeHome({ events, onTicketPurchase }) {
         <p className="text-gray-600">Discover curated experiences in your city</p>
       </div>
 
+      {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {processedEvents.map((event) => {
           const promoApplied = appliedPromos[event.id];
-          const basePrice = event.originalPrice;
+          const basePrice     = event.originalPrice;
           const displayedPrice = promoApplied
             ? promoApplied.discountedPrice
             : event.discountedPrice;
@@ -71,18 +136,23 @@ export default function AttendeeHome({ events, onTicketPurchase }) {
               ? Math.round(((basePrice - displayedPrice) / basePrice) * 100)
               : 0;
 
+          const { capacity = 0, reservedCount = 0 } = availability[event.id] || {};
+          const available = capacity - reservedCount;
+          const soldOut   = capacity > 0 && available <= 0;
+
           return (
             <div
               key={event.id}
               className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 relative"
             >
-              {/* Promotion Badge */}
+              {/* Badge promo */}
               {event.promotion && (
                 <div className="absolute top-0 right-0 bg-red-500 text-white px-3 py-1 rounded-bl-xl text-sm font-medium z-10">
                   {event.promotion}
                 </div>
               )}
 
+              {/* Banner */}
               {event.banner_url && (
                 <div className="relative">
                   <img
@@ -90,7 +160,6 @@ export default function AttendeeHome({ events, onTicketPurchase }) {
                     alt={event.event_name}
                     className="w-full h-48 object-cover rounded-t-xl"
                   />
-                  {/* Price Overlay */}
                   {basePrice > displayedPrice && (
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
                       <div className="flex items-center gap-2">
@@ -106,17 +175,15 @@ export default function AttendeeHome({ events, onTicketPurchase }) {
                 </div>
               )}
 
-              <div className="p-6">
+              {/* Konten utama */}
+              <div className="p-6 text-black">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {event.event_name}
-                  </h3>
+                  <h3 className="text-lg font-bold">{event.event_name}</h3>
                   <span className="bg-black text-white px-3 py-1 rounded-full text-sm">
                     {event.category}
                   </span>
                 </div>
 
-                {/* Display discount percent */}
                 {percentDiscount > 0 && (
                   <div className="mb-4 text-sm text-green-600 font-medium">
                     {percentDiscount}% OFF
@@ -125,49 +192,12 @@ export default function AttendeeHome({ events, onTicketPurchase }) {
 
                 <div className="space-y-3 mb-4">
                   <div className="flex items-center gap-3">
-                    <svg
-                      className="w-5 h-5 text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
                     <span className="text-gray-600">{event.venue}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <svg
-                      className="w-5 h-5 text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <div>
-                      <p className="text-gray-600">
-                        {new Date(event.event_date).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {event.start_time} - {event.end_time}
-                      </p>
-                    </div>
+                    <span className="text-gray-600">
+                      {new Date(event.event_date).toLocaleDateString()}
+                    </span>
                   </div>
                   {event.description && (
                     <p className="text-gray-600 text-sm line-clamp-3">
@@ -175,8 +205,8 @@ export default function AttendeeHome({ events, onTicketPurchase }) {
                     </p>
                   )}
 
-                  {/* Promo Code Input */}
-                  {event.promotionData?.length > 0 && (
+                  {/* Input promo (jika belum sold out) */}
+                  {event.promotionData?.length > 0 && !soldOut && (
                     <div className="mt-2">
                       <input
                         type="text"
@@ -200,23 +230,34 @@ export default function AttendeeHome({ events, onTicketPurchase }) {
                   )}
                 </div>
 
-                <button
-                  onClick={() =>
-                    onTicketPurchase({
-                      ...event,
-                      finalPrice: displayedPrice,
-                      appliedPromo: promoApplied?.appliedCode || null,
-                    })
-                  }
-                  className="w-full py-2 bg-black text-white rounded-lg hover:bg-[#BF9264] transition-colors relative"
-                >
-                  {basePrice > displayedPrice && (
-                    <span className="absolute -top-3 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
-                      Save ${(basePrice - displayedPrice).toFixed(2)}
-                    </span>
-                  )}
-                  Get Tickets
-                </button>
+                {/* Button aksi */}
+                {soldOut ? (
+                  <button
+                    onClick={() => joinWaitlist(event)}
+                    className="w-full py-2 rounded-lg bg-black text-white hover:bg-[#BF9264]"
+                  >
+                    Join Waitlist
+                  </button>
+                ) : (
+                  <button
+                    onClick={() =>
+                      onTicketPurchase({
+                        ...event,
+                        finalPrice:   displayedPrice,
+                        appliedPromo: promoApplied?.appliedCode || null,
+                      })
+                    }
+                    className="w-full py-2 rounded-lg bg-black text-white hover:bg-[#BF9264]"
+                  >
+                    Get Tickets
+                  </button>
+                )}
+
+                {soldOut && (
+                  <p className="mt-2 text-sm text-gray-500 text-center">
+                    Event is sold out.
+                  </p>
+                )}
               </div>
             </div>
           );
