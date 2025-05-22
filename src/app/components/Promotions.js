@@ -128,7 +128,6 @@ export default function Promotions({ setSelectedPage, selectedEventId }) {
                 className="w-full p-2 border rounded"
               >
                 <option value="percentage">Percentage</option>
-                <option value="fixed">Fixed Amount</option>
               </select>
             </div>
 
