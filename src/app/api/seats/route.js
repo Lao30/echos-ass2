@@ -1,28 +1,53 @@
-// app/api/seats/reserved/route.js
+// app/api/seats/route.js
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
+import { pool } from "../../lib/db";
 
-// Inisialisasi koneksi PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const eventId = searchParams.get("eventId");
-  if (!eventId) {
-    return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
-  }
-
+export async function POST(request) {
   try {
-    const { rows } = await pool.query(
-      `SELECT seat FROM orders WHERE event_id = $1`,
-      [eventId]
+    const { event_id, section, seat_number, email, amount } = await request.json();
+
+    // validasi
+    if (
+      event_id == null ||
+      !section ||
+      seat_number == null ||
+      !email ||
+      amount == null
+    ) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const seatCode = `${seat_number}${section}`;
+
+    // cek duplikat
+    const exists = await pool.query(
+      "SELECT 1 FROM orders WHERE event_id = $1 AND seat = $2",
+      [event_id, seatCode]
     );
-    const reserved = rows.map((r) => r.seat);
-    return NextResponse.json({ reserved });
+    if (exists.rowCount > 0) {
+      return NextResponse.json(
+        { error: "Seat already reserved" },
+        { status: 409 }
+      );
+    }
+
+    // INSERT dengan amount sesungguhnya
+    const { rows } = await pool.query(
+      `INSERT INTO orders (email, event_id, seat, amount, created_at)
+       VALUES ($1,$2,$3,$4, NOW())
+       RETURNING *`,
+      [email, event_id, seatCode, amount]
+    );
+
+    return NextResponse.json(
+      { success: true, reservation: rows[0] },
+      { status: 201 }
+    );
   } catch (err) {
-    console.error("Error fetching reserved seats:", err);
+    console.error("Error in /api/seats POST:", err);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
