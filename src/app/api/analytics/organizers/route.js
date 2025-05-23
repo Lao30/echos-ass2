@@ -1,50 +1,54 @@
-import { query } from '../../lib/db';
+import { query } from '../../../lib/db';
 
-export async function DELETE(request) {
+export async function GET() {
   try {
-
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return new Response(JSON.stringify({ 
-        error: 'User ID is required' 
-      }), { 
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const result = await query(
-      'DELETE FROM users WHERE user_id = $1 RETURNING *',
-      [userId]
+    // Total Event Organizers
+    const totalOrganizers = await query(
+      `SELECT COUNT(user_id) AS count 
+       FROM users 
+       WHERE role = 'Event Organizer'`
     );
 
-    if (result.rowCount === 0) {
-      return new Response(JSON.stringify({ 
-        error: 'User not found'
-      }), { 
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    // Monthly Organizer Growth
+    const monthlyGrowth = await query(
+      `SELECT 
+         TO_CHAR(created_at, 'YYYY-MM') AS month,
+         COUNT(user_id) AS new_organizers
+       FROM users
+       WHERE role = 'Event Organizer'
+       GROUP BY month
+       ORDER BY month ASC`
+    );
 
     return new Response(JSON.stringify({
       success: true,
-      deletedUser: result.rows[0]
+      data: {
+        total: Number(totalOrganizers.rows[0].count),
+        growth: monthlyGrowth.rows.map(row => ({
+          month: row.month,
+          count: Number(row.new_organizers)
+        }))
+      }
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
 
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error('Analytics Error:', error);
     return new Response(JSON.stringify({ 
-      error: 'Gagal menghapus user',
-      detail: error.message 
+      success: false,
+      error: 'Database Error',
+      detail: process.env.NODE_ENV === 'development' ? error.message : null
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
   }
 }
