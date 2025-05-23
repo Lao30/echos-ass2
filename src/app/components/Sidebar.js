@@ -6,13 +6,11 @@ const organizerMenuItems = [
   { name: 'Dashboard', icon: '🏠' },
   { name: 'CreateEvents', icon: '🗓️' },
   { name: 'Analytical', icon: '📊' },
-  { name: 'Settings', icon: '⚙️' },
 ];
 
 const adminMenuItems = [
   { name: 'UserRegister', icon: '👥' },
   { name: 'AnalyticalReport', icon: '📊' },
-  { name: 'Settings', icon: '⚙️' },
 ];
 
 export default function Sidebar({ selectedPage, setSelectedPage, isAdmin }) {
