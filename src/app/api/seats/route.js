@@ -6,7 +6,7 @@ export async function POST(request) {
   try {
     const { event_id, section, seat_number, email, amount } = await request.json();
 
-    // validasi
+  
     if (
       event_id == null ||
       !section ||
@@ -22,7 +22,7 @@ export async function POST(request) {
 
     const seatCode = `${seat_number}${section}`;
 
-    // cek duplikat
+   
     const exists = await pool.query(
       "SELECT 1 FROM orders WHERE event_id = $1 AND seat = $2",
       [event_id, seatCode]
@@ -34,7 +34,7 @@ export async function POST(request) {
       );
     }
 
-    // INSERT dengan amount sesungguhnya
+   
     const { rows } = await pool.query(
       `INSERT INTO orders (email, event_id, seat, amount, created_at)
        VALUES ($1,$2,$3,$4, NOW())

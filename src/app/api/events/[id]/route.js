@@ -61,11 +61,11 @@ export async function DELETE(request, { params }) {
   try {
     await client.query('BEGIN');
 
-    // Hapus data terkait di tabel orders dan waitlists
+    
     await client.query('DELETE FROM orders WHERE event_id = $1', [id]);
     await client.query('DELETE FROM waitlists WHERE event_id = $1', [id]);
 
-    // Hapus event utama
+    
     const result = await client.query(
       'DELETE FROM events WHERE id = $1 RETURNING *',
       [id]

@@ -1,8 +1,6 @@
 // app/api/seats/reserved/route.js
 import { NextResponse } from "next/server";
 import { Pool } from "pg";
-
-// Inisialisasi koneksi PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
