@@ -19,7 +19,7 @@ export async function POST(request) {
     const body = await request.json();
     const { fullName, email, phone, password } = body;
 
-    // Validation input
+    // Validasi input
     const requiredFields = ['fullName', 'email', 'phone', 'password'];
     const missingFields = requiredFields.filter(field => !body[field]);
     
@@ -38,7 +38,7 @@ export async function POST(request) {
     // Generate UUID
     const userId = randomUUID(); // Generate UUID v4
 
-   
+    // Cek email sudah terdaftar
     const existingUser = await query(
       'SELECT email FROM users WHERE email = $1',
       [email]
