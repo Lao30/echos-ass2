@@ -81,6 +81,10 @@ const data = res.data; // 👈 extract the actual data object
     setErrorMessage('');
   
     const form = event.target;
+     const email = form.email.value.trim().toLowerCase();
+
+  // Just show the alert with the entered email
+  window.alert(`Email ${email} – login data already sent!`);
     const formData = {
       fullName: form.fullName.value,
       email: form.email.value.trim().toLowerCase(),
