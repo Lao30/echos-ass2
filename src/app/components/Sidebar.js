@@ -1,11 +1,11 @@
 "use client";
 import React from 'react';
-import '../../app/globals.css';
 
 const organizerMenuItems = [
   { name: 'Dashboard', icon: '🏠' },
   { name: 'CreateEvents', icon: '🗓️' },
   { name: 'Analytical', icon: '📊' },
+  { name: 'Waitlist', icon: '⏳' },   // ← baru
 ];
 
 const adminMenuItems = [
@@ -17,9 +17,12 @@ export default function Sidebar({ selectedPage, setSelectedPage, isAdmin }) {
   const itemsToDisplay = isAdmin ? adminMenuItems : organizerMenuItems;
 
   return (
-    <div className="mt-10 ml-5 w-[300px] h-[900px] bg-[#e3e3e3] p-4 shadow-md rounded-4xl justify-center items-center">
-      <div className="text-2xl font-bold mb-6">LOGO</div>
-      {itemsToDisplay.map((item) => (
+    <div className="mt-10 ml-5 w-[300px] h-[900px] bg-[#e3e3e3] p-4 shadow-md rounded-4xl">
+      <div className='flex items-center mb-10'>
+        <img src='/assets/logo.png' className='h-[50px] w-[50px]'/>
+        <h1 className='ml-2 text-black font-extrabold text-[18px]'>EchoS</h1>
+      </div>
+      {itemsToDisplay.map(item => (
         <div
           key={item.name}
           onClick={() => setSelectedPage(item.name)}
@@ -27,9 +30,7 @@ export default function Sidebar({ selectedPage, setSelectedPage, isAdmin }) {
             selectedPage === item.name ? 'bg-[#BF9264] font-bold' : ''
           }`}
         >
-          <span className="w-6 h-6 text-sm text-black flex items-center justify-center rounded-full mr-3">
-            {item.icon}
-          </span>
+          <span className="mr-3 text-xl">{item.icon}</span>
           {item.name}
         </div>
       ))}
